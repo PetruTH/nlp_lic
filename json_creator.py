@@ -4,7 +4,9 @@ import spacy
 import json
 
 def connect_to_db():
-    # Connect to MariaDB Platform
+    """
+        Connects to mariaDB database of dexonline
+    """
     try:
         conn = mariadb.connect(
             user="root",
@@ -19,6 +21,10 @@ def connect_to_db():
         sys.exit(1)
     return conn
 
+
+"""
+The next 4 functions will store all data needed for finding a word in dexonline database.
+"""
 def json_creator_lexeme_info(cursor):
     json_dict = {}
     cursor.execute('select formNoAccent, id, modelType from Lexeme')
@@ -83,6 +89,10 @@ def json_creator_wordId_form_pos(cursor):
         json.dump(json_dict, fisier_json, indent=4, sort_keys=True)
 
 def main():
+    """
+        If there is need for an update, uncomment following function calls to update all JSON files needed.
+    """
+
     cursor = connect_to_db().cursor()
     
     # calling json_creators functions to store all data needed from DB
@@ -92,7 +102,7 @@ def main():
     #print("done 2/3")
     #json_creator_inflected_form_id_and_pos(cursor)
     #print("done 3/3")
-    json_creator_wordId_form_pos(cursor)
+    # json_creator_wordId_form_pos(cursor)
 
 
 main()
