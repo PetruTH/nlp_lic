@@ -1,5 +1,5 @@
-import spacy
 import json
+import requests
 from spacy.tokens import Token
 
 ud_to_dex = {
@@ -19,72 +19,110 @@ ud_to_dex = {
         "ADJ": "A"
    }
 
-mapare = json.load(open('forme_morfologice.json'))
-all_inflected_forms = json.load(open('inflected_form_lexemeId_inflectionId.json'))
-word_to_id_pos = json.load(open('word_id_pos.json'))
-id_to_word_pos = json.load(open('id_word_pos.json'))
-id_to_inflected_forms = json.load(open('wordId_inflected_forms.json'))
+mapare = {}
+all_inflected_forms = {}
+word_to_id_pos = {}
+id_to_word_pos = {}
+id_to_inflected_forms = {}
 
+class PrepareData():
+    @staticmethod
+    def run():
+        global mapare, all_inflected_forms, word_to_id_pos, id_to_inflected_forms, id_to_word_pos
+        files_to_check = ["forme_morfologice", "inflected_form_lexemeId_inflectionId", "word_id_pos", "id_word_pos", "wordId_inflected_forms"]
 
-def get_all_forms(token):
-    """
-        This function will return all the inflected forms for a certain token given as a parameter.
-        It will search for that token in dexonline database and it will find the lexemeId. After, that,
-        based on that lexemeId, it will return all inflected forms found with the same lexemeId (a list of
-        dictionaries containig words form and morphological details also from dexonline database)
-    """
-    all_inflected_words_found = all_inflected_forms[token.text.lower()]
-    id = ""
-    
-    words_prel = []
-    for word in all_inflected_words_found:
+        for file in files_to_check:
 
-        pos_found = mapare['DEXONLINE_MORPH'][str(word['inflectionId'])][1]
-        if ud_to_dex[token.pos_] == pos_found:
-            if str(word['lexemeId']) not in words_prel:
-                words_prel.append(str(word['lexemeId']))
+            try:    
+                if file == "forme_morfologice":        
+                    mapare = json.load(open(f'{file}.json'))
+                elif file == "inflected_form_lexemeId_inflectionId":
+                    all_inflected_forms = json.load(open(f'{file}.json'))
+                elif file == "word_id_pos":
+                    word_to_id_pos = json.load(open(f'{file}.json'))
+                elif file == "id_word_pos":
+                    id_to_word_pos = json.load(open(f'{file}.json'))
+                elif file == "wordId_inflected_forms":
+                    id_to_inflected_forms = json.load(open(f'{file}.json'))
 
-        elif ud_to_dex[token.pos_] == "M" and pos_found == "F":
-            if str(word['lexemeId']) not in words_prel:
-                words_prel.append(str(word['lexemeId']))
+            except FileNotFoundError:
+                url = f"https://github.com/PetruTH/nlp_lic/releases/download/Resources/{file}.json"
+                response = requests.get(url)
+                print(file, "download")
+                if response.status_code == 200:
+                    with open(f"{file}.json", "wb") as file:
+                        file.write(response.content)
+        
+        mapare = json.load(open('forme_morfologice.json'))
+        all_inflected_forms = json.load(open('inflected_form_lexemeId_inflectionId.json'))
+        word_to_id_pos = json.load(open('word_id_pos.json'))
+        id_to_word_pos = json.load(open('id_word_pos.json'))
+        id_to_inflected_forms = json.load(open('wordId_inflected_forms.json'))
 
-        elif ud_to_dex[token.pos_] == "M" and pos_found == "N":
-            if str(word['lexemeId']) not in words_prel:
-                words_prel.append(str(word['lexemeId']))
-    
-    words_prel.sort(key=lambda x: int(x))
-    
-    if len(words_prel) > 1:
-        for element in words_prel:
-            if id_to_word_pos[str(element)][0]['form'] == token.lemma_:
-                id = element
+class ExtendTokenProperties():
+    @staticmethod
+    def get_all_forms(token):
+        """
+            This function will return all the inflected forms for a certain token given as a parameter.
+            It will search for that token in dexonline database and it will find the lexemeId. After, that,
+            based on that lexemeId, it will return all inflected forms found with the same lexemeId (a list of
+            dictionaries containig words form and morphological details also from dexonline database)
+        """
+        global all_inflected_forms, id_to_inflected_forms, word_to_id_pos, ud_to_dex
+        
+        all_inflected_words_found = all_inflected_forms[token.text.lower()]
+        id = ""
+        
+        words_prel = []
+        for word in all_inflected_words_found:
 
-    elif len(words_prel) == 1:
-        id = words_prel[0]
+            pos_found = mapare['DEXONLINE_MORPH'][str(word['inflectionId'])][1]
+            if ud_to_dex[token.pos_] == pos_found:
+                if str(word['lexemeId']) not in words_prel:
+                    words_prel.append(str(word['lexemeId']))
 
-    elif len(words_prel) == 0:
-        words_prel = [str(x['id']) for x in word_to_id_pos[token.lemma_]]
-        id = words_prel[0]
-    
-    result = id_to_inflected_forms[id]
+            elif ud_to_dex[token.pos_] == "M" and pos_found == "F":
+                if str(word['lexemeId']) not in words_prel:
+                    words_prel.append(str(word['lexemeId']))
 
-    return result
+            elif ud_to_dex[token.pos_] == "M" and pos_found == "N":
+                if str(word['lexemeId']) not in words_prel:
+                    words_prel.append(str(word['lexemeId']))
+        
+        words_prel.sort(key=lambda x: int(x))
+        
+        if len(words_prel) > 1:
+            for element in words_prel:
+                if id_to_word_pos[str(element)][0]['form'] == token.lemma_:
+                    id = element
 
-def validate_token(token):
-    """
-        Function that validates if a token can be found in dexonline database. It will exclude words that
-        describe names for example or places, organizations, etc.
-    """
-    if token.lang_ != "ro":
-        return False
-    if not token.text.isalpha():
-        return False
-    if token.ent_type_ in ["ORGANIZATION", "EVENT", "GPE", "LOC"]:
-        return False
-    if token.ent_type_ == "PERSON" and token.pos_ == "PROPN":
-        print(f"Cuvantul: {token.text} este substantiv propriu de forma invariabila!\n\n\n")
-        return False
-    return True
+        elif len(words_prel) == 1:
+            id = words_prel[0]
+
+        elif len(words_prel) == 0:
+            words_prel = [str(x['id']) for x in word_to_id_pos[token.lemma_]]
+            id = words_prel[0]
+        
+        result = id_to_inflected_forms[id]
+
+        return result
+
+    @staticmethod
+    def validate_token(token):
+        """
+            Function that validates if a token can be found in dexonline database. It will exclude words that
+            describe names for example or places, organizations, etc.
+        """
+        if token.lang_ != "ro":
+            return False
+        if not token.text.isalpha():
+            return False
+        if token.ent_type_ in ["ORGANIZATION", "EVENT", "GPE", "LOC"]:
+            return False
+        if token.ent_type_ == "PERSON" and token.pos_ == "PROPN":
+            print(f"Cuvantul: {token.text} este substantiv propriu de forma invariabila!\n\n\n")
+            return False
+        return True
 
 
 """
@@ -92,8 +130,8 @@ def validate_token(token):
         forms_ -> will return each inflected form for a certain word
         is_valid -> will verify if token can be found in dexonline database based on the rules described before
 """
-Token.set_extension("forms_", method=get_all_forms, force=True)
-Token.set_extension("is_valid", method=validate_token, force=True)
+Token.set_extension("forms_", method=ExtendTokenProperties.get_all_forms, force=True)
+Token.set_extension("is_valid", method=ExtendTokenProperties.validate_token, force=True)
 
 
 """
@@ -102,11 +140,14 @@ Token.set_extension("is_valid", method=validate_token, force=True)
 
 # def main():
 #     import time
+#     import spacy
 #     t1 = time.time()
 #     # reader = open("text.txt", "r")
 #     # text = reader.read()
 #     text = "Eu am fugit mâncând la cel mai apropiat magazin din sat pentru a-mi lua suc."
 
+#     PrepareData.run()
+    
 #     if "-" in text:
 #         text = text.replace("-", " ")
 #     nlp = spacy.load("ro_core_news_sm")
