@@ -2,14 +2,15 @@ from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py
 
 setup(
-    name='dexonlineplugin',
+    name='nlp_lic',
     description='Spacy plugin working based on dexonline database',
     author='Cristea Petru-Theodor',
     version='0.0.1',
     author_email='petru.theodor@outlook.com',
-    packages=find_packages(),
+    packages=['dexonlineplugin'],
     install_requires=[
-        'spacy'
-    ],
-    scripts=["download_jsons_data.py"]
+        'spacy',
+        'requests',
+        'tqdm'
+    ]
 )

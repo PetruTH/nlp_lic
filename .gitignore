@@ -2,3 +2,9 @@
 *.json
 *.ipynb
 .DS_Store
+__MACOSX
+.mypy_cache
+*.zip
+.vscode
+build
+nlp_lic.egg-info
