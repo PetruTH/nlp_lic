@@ -31,8 +31,8 @@ ud_to_dex = {
    }
 end_of_phrase = ["!", "?", ".", "\n"]
 
-json_archive = "utils_json.zip"
-json_archive_url = f"https://github.com/PetruTH/nlp_lic/releases/download/Resources/{json_archive}"
+json_archive = "util/utils_json.zip"
+json_archive_url = f"https://github.com/PetruTH/nlp_lic/releases/download/Resources/utils_json.zip"
 UNIDENTIFIED_TOKEN = "unidentified"
 MAPARE_PATH = "util/forme_morfologice.json"
 ALL_INFLECTED_FORMS_PATH = "util/inflected_form_lexemeId_inflectionId.json"

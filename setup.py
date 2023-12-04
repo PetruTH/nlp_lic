@@ -1,5 +1,4 @@
 from setuptools import setup, find_packages
-from setuptools.command.build_py import build_py
 
 setup(
     name='dexonline',
@@ -7,7 +6,7 @@ setup(
     author='Cristea Petru-Theodor',
     version='0.0.1',
     author_email='petru.theodor@outlook.com',
-    packages=['dexonlineplugin'],
+    packages=find_packages(),
     install_requires=[
         'spacy==3.7.2',
         'requests==2.31.0',
