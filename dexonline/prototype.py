@@ -3,15 +3,26 @@ from dexonline.util_data import (
     root_forms,
     end_of_phrase,
     banned_pos,
+    ud_to_dex
 )
 from dexonline.data_worker import (
     get_all_forms,
     validate_token,
     get_right_person_and_number,
     get_wanted_form,
-    forme_reflexive_verifier
+    forme_reflexive_verifier,
+    find_entryIds,
+    find_inflection_possibilites,
+    find_lexeme_ids,
+    find_matching_lexemeIds,
+    find_meaningIds,
+    find_treeIds,
+    mapare,
+    all_inflected_forms,
+    synonyms,
+    id_to_inflected_forms
 )
-
+import re
 
 def oltenizare_worker(doc):
     """
@@ -121,6 +132,60 @@ def oltenizare(doc):
 
     return phrase_to_return
 
+def synonyms_builder(token, pos_wanted):
+    token_text = re.sub('[^a-zA-ZăâîșțĂÂÎȘȚ]', '', token.text.lower())
+    print(token_text, pos_wanted)    
+    inflected_forms = all_inflected_forms.get(token_text, ["UNKNOWN"])
+    
+    inflection_possibilities = find_inflection_possibilites(inflected_forms, pos_wanted)
+    possible_lexeme_ids = find_lexeme_ids(inflected_forms)
+    lexeme_ids = find_matching_lexemeIds(possible_lexeme_ids, pos_wanted)
+    entry_ids = find_entryIds(lexeme_ids)
+    tree_ids = find_treeIds(entry_ids)
+    meaning_ids = find_meaningIds(tree_ids)
+
+    candidate_synonyms_base_form = []
+
+    for meaningId in meaning_ids:
+        possible_synonyms = synonyms.get(str(meaningId), ["no synonyms"])
+        if possible_synonyms != ["no synonyms"]:
+            for synonym in possible_synonyms:
+                syn_to_add = re.sub('[^a-zA-ZăâîșțĂÂÎȘȚ ]', '', synonym[1]).split(" ")
+                
+                for syn in syn_to_add:
+                    syn_to_add_helper = all_inflected_forms.get(syn, [{"lexemeId": "UNKNOWN"}])
+                    if syn_to_add == ["UNKOWN"]:
+                        break
+
+                    syn_tuple = (syn, syn_to_add_helper[0].get("lexemeId", "dummy"))
+                    if syn_tuple not in candidate_synonyms_base_form and syn_tuple[0] != token_text:
+                        candidate_synonyms_base_form.append(syn_tuple)
+
+    candidate_synonyms_base_form = [syn for i, syn in enumerate(candidate_synonyms_base_form) if i == 0 or syn[1] != candidate_synonyms_base_form[i-1][1]]
+
+    return inflection_possibilities, candidate_synonyms_base_form
+
+def get_synonyms(token, pos_found):
+    inflection_possibilites, candidate_synonyms_base_form = synonyms_builder(token, pos_found)
+    
+    synonyms_found = []
+    for syn in candidate_synonyms_base_form:
+        inflected_forms_syn = id_to_inflected_forms.get(str(syn[1]), [{"form": "no pos", "pos": "no form"}])
+
+        for inflectionId in inflection_possibilites:
+            inflection = mapare["DEXONLINE_MORPH"].get(str(inflectionId))[0]
+            for pos_syn in inflected_forms_syn:
+                pos_found_on_syn = pos_syn.get("pos")
+                form_found_on_syn = pos_syn.get("form")
+                if pos_found_on_syn == inflection:
+                        if form_found_on_syn not in synonyms_found:
+                            synonyms_found.append(form_found_on_syn)
+
+
+    return synonyms_found
+
+
+
 
 """
     There next three lines will add to Token and Doc from spacy three new features.
@@ -131,6 +196,7 @@ def oltenizare(doc):
 Token.set_extension("forms_", method=get_all_forms, force=True)
 Token.set_extension("is_valid", method=validate_token, force=True)
 Doc.set_extension("oltenizare", method=oltenizare, force=True)
+Token.set_extension("get_synonyms", method=get_synonyms, force=True)
 
 
 """
@@ -141,17 +207,16 @@ Doc.set_extension("oltenizare", method=oltenizare, force=True)
 #     import time
 #     import spacy
 #     t1 = time.time()
-#     reader = open("/Users/inttstbrd/Desktop/licenta/nlp_lic/text.txt", "r")
-#     text = reader.read()
-#     # text="După ce am terminat de făcut temele, mi-am făcut timp liber."
+#     # reader = open("/Users/inttstbrd/Desktop/licenta/nlp_lic/text.txt", "r")
+#     # text = reader.read()
+#     text="Eu am plantat un copac."
 #     nlp = spacy.load("ro_core_news_sm")
 #     doc = nlp(text)
-#     prop = nlp(doc._.oltenizare())
-#     print(prop)
-#     # for token in doc:
-#     #     if token._.is_valid() == True:
-#     #         print(token._.forms_())
-#     #         print(token, token.dep_, token.pos_, token.morph, token.lemma_)
+
+#     for token in doc:
+#         if token._.is_valid():
+#             print(token._.get_synonyms(ud_to_dex[token.pos_]))
+
 #     t2 = time.time() - t1
 #     print("TIMP: ", t2)
 

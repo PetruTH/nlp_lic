@@ -8,6 +8,7 @@ from dexonline.util_data import (
     reflexive_short_to_long_form
 )
 
+
 mapare, all_inflected_forms, word_to_id_pos, id_to_word_pos, id_to_inflected_forms, entry_lexeme, tree_entry, relation, synonyms = load_jsons()
 
 
@@ -195,24 +196,31 @@ def forme_reflexive_verifier(token):
 
     return word_added
 
+from spacy.tokens import Token
 
-def find_lexeme_ids(inflected_forms):
+Token.set_extension("forms_", method=get_all_forms, force=True)
+Token.set_extension("is_valid", method=validate_token, force=True)
+
+import re
+
+def synonyms_builder(token, pos_wanted):
+    token_text = re.sub('[^a-zA-ZăâîșțĂÂÎȘȚ]', '', token.text.lower())
+    print(token_text, pos_wanted)
     possible_lexeme_ids = []
+    inflected_forms = all_inflected_forms.get(token_text, ["UNKNOWN"])
+    
+    inflection_possibilites = []
+    
+    # aici trebuie o functie care sa decida ce inflection id va lua la final (compari cu token.morph si dexonline inflection id)
+    # for x in inflection_possibilites:
+        # print(x, token.morph)
+    # ia le doar pe alea cu acelasi inflectionId din tabelul asta
 
     if inflected_forms != ["UNKNOWN"]:
         for inflected_form in inflected_forms:
             if inflected_form.get("lexemeId") not in possible_lexeme_ids:
                 possible_lexeme_ids.append(inflected_form.get("lexemeId"))
 
-
-    return possible_lexeme_ids
-
-
-def find_inflection_possibilites(inflected_forms, pos_wanted):
-    inflection_possibilites = []
-
-    if inflected_forms != ["UNKNOWN"]:
-        for inflected_form in inflected_forms:
             inflectionId = mapare["DEXONLINE_MORPH"][str(inflected_form["inflectionId"])][1]
             inflected_form_id = str(inflected_form["inflectionId"])
 
@@ -221,12 +229,9 @@ def find_inflection_possibilites(inflected_forms, pos_wanted):
             elif inflectionId in ["VT", "V"] and pos_wanted in ["V", "VT"] and inflected_form_id not in inflection_possibilites:
                 inflection_possibilites.append(str(inflected_form["inflectionId"]))
             elif inflectionId in ["M", "F", "N"] and pos_wanted in ["M", "F", "N"] and inflected_form_id not in inflection_possibilites:
-                inflection_possibilites.append(str(inflected_form["inflectionId"]))
+                inflection_possibilites.append(str(inflected_form["inflectionId"]))      
+    
 
-    return inflection_possibilites
-
-
-def find_matching_lexemeIds(possible_lexeme_ids, pos_wanted):
     lexeme_ids = []
 
     for lexemeId in possible_lexeme_ids:
@@ -237,9 +242,9 @@ def find_matching_lexemeIds(possible_lexeme_ids, pos_wanted):
             lexeme_ids.append(lexemeId)
         elif variant['pos'] in ["M", "F", "N"] and pos_wanted in ["M", "F", "N"]:
             lexeme_ids.append(lexemeId)
-    return lexeme_ids
 
-def find_entryIds(lexeme_ids):
+    
+
     entry_ids = []
     for lexemeId in lexeme_ids:
         all_entries = entry_lexeme.get(str(lexemeId), ["no entry"])
@@ -247,21 +252,13 @@ def find_entryIds(lexeme_ids):
             for entry in all_entries:
                 entry_ids.append(entry)
 
-    return entry_ids
-
-
-def find_treeIds(entry_ids):
     tree_ids = []
     for entryId in entry_ids:
         tree_entries = tree_entry.get(str(entryId), ["no entry tree"])
         if tree_entries != ["no entry tree"]:
             for treeId in tree_entries:
                 tree_ids.append(treeId)
-    
-    return tree_ids
 
-
-def find_meaningIds(tree_ids):
     meaning_ids = []
 
     for treeId in tree_ids:
@@ -270,5 +267,43 @@ def find_meaningIds(tree_ids):
             for meaningId in all_meaningIds:
                 meaning_ids.append(meaningId)
 
-    return meaning_ids
 
+    candidate_synonyms_base_form = []
+
+    for meaningId in meaning_ids:
+        possible_synonyms = synonyms.get(str(meaningId), ["no synonyms"])
+        if possible_synonyms != ["no synonyms"]:
+            for synonym in possible_synonyms:
+                syn_to_add =re.sub('[^a-zA-ZăâîșțĂÂÎȘȚ]', '', synonym[1].split()[0])
+                if syn_to_add not in candidate_synonyms_base_form and syn_to_add != token_text:
+                    candidate_synonyms_base_form.append(syn_to_add)
+
+
+    # aici iau inflection_possibilites[0] pentru testare
+    print("inflectionids dex", inflection_possibilites)
+    print(candidate_synonyms_base_form)
+
+
+"""
+    Short demo to show how it actually works. Uncomment and run the main() function.
+"""
+
+def main():
+    import time
+    import spacy
+    t1 = time.time()
+    # reader = open("/Users/inttstbrd/Desktop/licenta/nlp_lic/text.txt", "r")
+    # text = reader.read()
+    text="Ei au plecat în vacanță săptămâna trecută."
+    nlp = spacy.load("ro_core_news_sm")
+    doc = nlp(text)
+    for token in doc:
+        # print(token.morph)
+        # asigura te ca le iei pe toate la singural in loc de token.lemma
+        if token._.is_valid() and token.pos_ != "AUX":
+            synonyms_builder(token, ud_to_dex[token.pos_])
+
+    t2 = time.time() - t1
+    print("TIMP: ", t2)
+
+main()
