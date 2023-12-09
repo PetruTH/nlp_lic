@@ -195,6 +195,10 @@ def forme_reflexive_verifier(token):
 
     return word_added
 
+"""
+    The next 6 functions will help to get the relevant information for finding
+    synonyms for a certain word.
+"""
 
 def find_lexeme_ids(inflected_forms):
     possible_lexeme_ids = []
@@ -203,7 +207,6 @@ def find_lexeme_ids(inflected_forms):
         for inflected_form in inflected_forms:
             if inflected_form.get("lexemeId") not in possible_lexeme_ids:
                 possible_lexeme_ids.append(inflected_form.get("lexemeId"))
-
 
     return possible_lexeme_ids
 
@@ -216,6 +219,8 @@ def find_inflection_possibilites(inflected_forms, pos_wanted):
             inflectionId = mapare["DEXONLINE_MORPH"][str(inflected_form["inflectionId"])][1]
             inflected_form_id = str(inflected_form["inflectionId"])
 
+            # This will handle little differences between dexonline database info and
+            # spacy library info.
             if inflectionId == pos_wanted and inflected_form_id not in inflection_possibilites:
                 inflection_possibilites.append(str(inflected_form["inflectionId"]))
             elif inflectionId in ["VT", "V"] and pos_wanted in ["V", "VT"] and inflected_form_id not in inflection_possibilites:
@@ -231,6 +236,9 @@ def find_matching_lexemeIds(possible_lexeme_ids, pos_wanted):
 
     for lexemeId in possible_lexeme_ids:
         variant = id_to_word_pos.get(str(lexemeId), "UNKNOWN")[0]    
+        
+        # This will handle little differences between dexonline database info and
+        # spacy library info.
         if variant['pos'] == pos_wanted:
             lexeme_ids.append(lexemeId)
         elif variant['pos'] in ["VT", "V"] and pos_wanted in ["V", "VT"]:

@@ -133,8 +133,17 @@ def oltenizare(doc):
     return phrase_to_return
 
 def synonyms_builder(token, pos_wanted):
+    """
+        This function will extract each synonym found for a certain word at a
+        base form. 
+        Returns:
+            inflection_possibilities = a list of inflection id s for matching 
+                                       with the inflection found in input
+            candidates_synonyms_base_form = a list of synonyms at a base form
+    """
+
+    pos_wanted = ud_to_dex.get(pos_wanted)
     token_text = re.sub('[^a-zA-ZăâîșțĂÂÎȘȚ]', '', token.text.lower())
-    print(token_text, pos_wanted)    
     inflected_forms = all_inflected_forms.get(token_text, ["UNKNOWN"])
     
     inflection_possibilities = find_inflection_possibilites(inflected_forms, pos_wanted)
@@ -161,11 +170,17 @@ def synonyms_builder(token, pos_wanted):
                     if syn_tuple not in candidate_synonyms_base_form and syn_tuple[0] != token_text:
                         candidate_synonyms_base_form.append(syn_tuple)
 
+    # In some cases, there will be words with same lexemeId but with different inflections so
+    # the next line will make the following list have unique elements by lexemeId
     candidate_synonyms_base_form = [syn for i, syn in enumerate(candidate_synonyms_base_form) if i == 0 or syn[1] != candidate_synonyms_base_form[i-1][1]]
 
     return inflection_possibilities, candidate_synonyms_base_form
 
 def get_synonyms(token, pos_found):
+    """
+        This function will reterun the synonyms at the same inflection of input found in text.
+    """
+
     inflection_possibilites, candidate_synonyms_base_form = synonyms_builder(token, pos_found)
     
     synonyms_found = []
@@ -185,8 +200,6 @@ def get_synonyms(token, pos_found):
     return synonyms_found
 
 
-
-
 """
     There next three lines will add to Token and Doc from spacy three new features.
         forms_ -> will return each inflected form for a certain word
@@ -203,21 +216,21 @@ Token.set_extension("get_synonyms", method=get_synonyms, force=True)
     Short demo to show how it actually works. Uncomment and run the main() function.
 """
 
-# def main():
-#     import time
-#     import spacy
-#     t1 = time.time()
-#     # reader = open("/Users/inttstbrd/Desktop/licenta/nlp_lic/text.txt", "r")
-#     # text = reader.read()
-#     text="Eu am plantat un copac."
-#     nlp = spacy.load("ro_core_news_sm")
-#     doc = nlp(text)
+def main():
+    import time
+    import spacy
+    t1 = time.time()
+    # reader = open("/Users/inttstbrd/Desktop/licenta/nlp_lic/text.txt", "r")
+    # text = reader.read()
+    text="Eu am plantat un copac."
+    nlp = spacy.load("ro_core_news_sm")
+    doc = nlp(text)
 
-#     for token in doc:
-#         if token._.is_valid():
-#             print(token._.get_synonyms(ud_to_dex[token.pos_]))
+    for token in doc:
+        if token._.is_valid():
+            print(token, "sinonime:", token._.get_synonyms(token.pos_))
 
-#     t2 = time.time() - t1
-#     print("TIMP: ", t2)
+    t2 = time.time() - t1
+    print("TIMP: ", t2)
 
-# main()
+main()
