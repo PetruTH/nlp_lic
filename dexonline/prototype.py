@@ -201,10 +201,11 @@ def get_synonyms(token, pos_found):
 
 
 """
-    There next three lines will add to Token and Doc from spacy three new features.
+    There next four lines will add to Token and Doc from spacy new features.
         forms_ -> will return each inflected form for a certain word
         is_valid -> will verify if token can be found in dexonline database based on the rules described before
         oltenizare -> will automatically change tense of verbs from: present perfect (perfect compus) to: past perfect (perfect simplu)
+        get_synonyms -> will return all the synonyms found in dexonline database for a certain word
 """
 Token.set_extension("forms_", method=get_all_forms, force=True)
 Token.set_extension("is_valid", method=validate_token, force=True)
@@ -225,7 +226,8 @@ def main():
     text="Eu am plantat un copac."
     nlp = spacy.load("ro_core_news_sm")
     doc = nlp(text)
-
+    doc = nlp(doc._.oltenizare())
+    print(doc)
     for token in doc:
         if token._.is_valid():
             print(token, "sinonime:", token._.get_synonyms(token.pos_))
