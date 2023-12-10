@@ -20,15 +20,13 @@ from dexonline.util_data import (
 )
 
 
-LOG_CONFIG = (
-    " [%(levelname)s] %(asctime)s %(name)s:%(lineno)d - %(message)s"
-)
+LOG_CONFIG = " [%(levelname)s] %(asctime)s %(name)s:%(lineno)d - %(message)s"
 logging.basicConfig(level=logging.INFO, format=LOG_CONFIG)
 
 
 def unzip(archive_path, folder_choosen):
     logging.info("Unzipping jsons files")
-    with zipfile.ZipFile(archive_path, 'r') as arhiva:
+    with zipfile.ZipFile(archive_path, "r") as arhiva:
         if not os.path.exists(folder_choosen):
             os.makedirs(folder_choosen)
 
@@ -37,10 +35,16 @@ def unzip(archive_path, folder_choosen):
 
 def download_file(url, local_filename, chunk_size=128):
     response = requests.get(url, stream=True)
-    total_size = int(response.headers.get('content-length', 0))
+    total_size = int(response.headers.get("content-length", 0))
     logging.info("The download with jsons archive will start now!")
-    with tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024, desc=local_filename) as pbar:
-        with open(local_filename, 'wb') as file:
+    with tqdm(
+        total=total_size,
+        unit="B",
+        unit_scale=True,
+        unit_divisor=1024,
+        desc=local_filename,
+    ) as pbar:
+        with open(local_filename, "wb") as file:
             for data in response.iter_content(chunk_size=chunk_size):
                 pbar.update(len(data))
                 file.write(data)
@@ -66,7 +70,7 @@ def load_jsons():
     id_to_word_pos = json.load(open(ID_TO_WORD_POS_PATH))
     id_to_inflected_forms = json.load(open(ID_TO_INFLECTED_FORMS_PATH))
     entry_lexeme = json.load(open(ENTRY_LEXEME))
-    tree_entry =  json.load(open(TREE_ENTRY))
+    tree_entry = json.load(open(TREE_ENTRY))
     relation = json.load(open(RELATION))
     synonyms = json.load(open(SYNONYMS))
 
@@ -80,5 +84,5 @@ def load_jsons():
         entry_lexeme,
         tree_entry,
         relation,
-        synonyms
+        synonyms,
     )
