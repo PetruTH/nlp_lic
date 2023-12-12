@@ -182,7 +182,7 @@ def synonyms_builder(token, pos_wanted):
     """
 
     token_text = re.sub('[^a-zA-ZăâîșțĂÂÎȘȚ]', '', token.text.lower())
-    inflected_forms = all_inflected_forms.get(token_text, ["UNKNOWN"])
+    inflected_forms = all_inflected_forms.find_all_inflected_forms(token_text)
     
     inflection_possibilities = find_inflection_possibilites(token, inflected_forms, pos_wanted)
     possible_lexeme_ids = find_lexeme_ids(inflected_forms)
@@ -194,13 +194,16 @@ def synonyms_builder(token, pos_wanted):
     candidate_synonyms_base_form = []
 
     for meaningId in meaning_ids:
-        possible_synonyms = synonyms.get(str(meaningId), ["no synonyms"])
+        possible_synonyms = synonyms.find_synonyms(meaningId)
         if possible_synonyms != ["no synonyms"]:
             for synonym in possible_synonyms:
                 syn_to_add = re.sub('[^a-zA-ZăâîșțĂÂÎȘȚ ]', '', synonym[1]).split(" ")
                 
                 for syn in syn_to_add:
-                    syn_to_add_helper = all_inflected_forms.get(syn, [{"lexemeId": "UNKNOWN"}])
+                    syn_to_add_helper = all_inflected_forms.find_all_inflected_forms(
+                                syn,
+                                unidentified={"lexemeId": "UNKNOWN"}
+                            )
                     if syn_to_add == ["UNKOWN"]:
                         break
 
@@ -229,13 +232,11 @@ def get_synonyms(token):
 
         synonyms_found = []
         for syn in candidate_synonyms_base_form:
-            inflected_forms_syn = id_to_inflected_forms.get(str(syn[1]), [{"form": "no pos", "pos": "no form"}])
+            inflected_forms_syn = id_to_inflected_forms.find_id_to_inflected_forms(str(syn[1]))
 
             for inflectionId in inflection_possibilites:
-                inflection = mapare["DEXONLINE_MORPH"].get(
-                                str(inflectionId),
-                                "UNKNOWN"
-                            )[0]
+                inflection = mapare.find_dexonline_pos_detail(str(inflectionId))
+
                 for pos_syn in inflected_forms_syn:
                     pos_found_on_syn = pos_syn.get("pos")
                     form_found_on_syn = pos_syn.get("form")
@@ -272,23 +273,23 @@ Token.set_extension("get_synonyms", method=get_synonyms, force=True)
 """
 
 
-# def main():
-#     import time
-#     import spacy
+def main():
+    import time
+    import spacy
 
-#     t1 = time.time()
-#     # reader = open("/Users/inttstbrd/Desktop/licenta/nlp_lic/text.txt", "r")
-#     # text = reader.read()
-#     text = "PLantai un copac. Are harbuz sinonim?"
-#     nlp = spacy.load("ro_core_news_sm")
-#     doc = nlp(text)
-#     # doc = nlp(doc._.oltenizare())
-#     print(doc)
-#     for token in doc:    
-#         print(token, "sinonime:", token._.get_synonyms())
+    t1 = time.time()
+    # reader = open("/Users/inttstbrd/Desktop/licenta/nlp_lic/text.txt", "r")
+    # text = reader.read()
+    text = "PLantai un copac. Are harbuz sinonim?"
+    nlp = spacy.load("ro_core_news_sm")
+    doc = nlp(text)
+    # doc = nlp(doc._.oltenizare())
+    print(doc)
+    for token in doc:    
+        print(token, "sinonime:", token._.get_synonyms())
 
-#     t2 = time.time() - t1
-#     print("TIMP: ", t2)
+    t2 = time.time() - t1
+    print("TIMP: ", t2)
 
 
-# main()
+main()

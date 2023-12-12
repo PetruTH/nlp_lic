@@ -29,11 +29,9 @@ def get_all_forms_worker(token):
     if "-" in token.text:
         token_text = token_text.replace("-", "")
 
-    all_inflected_words_found = all_inflected_forms.get(
-        token_text, all_inflected_forms.get(
-            token_text.lower(), UNIDENTIFIED_TOKEN
-        )
-    )
+    all_inflected_words_found = all_inflected_forms.find_all_inflected_forms_double_verification(
+                token_text, token_text.lower()
+            )
 
     if all_inflected_words_found == UNIDENTIFIED_TOKEN:
         return []
@@ -44,7 +42,7 @@ def get_all_forms_worker(token):
     if len(set(only_one_word)) == 1:
         words_prel.append(str(only_one_word[0]))
     for word in all_inflected_words_found:
-        pos_found = mapare["DEXONLINE_MORPH"][str(word["inflectionId"])][1]
+        pos_found = mapare.find_dexonline_pos_id(word['inflectionId'])
         """
             mapare['DEXONLINE_MORPH']: ["morph dexonline", "pos dexonline"],
             this will help for mapping spacy pos to dexonline pos
@@ -88,15 +86,16 @@ def get_all_forms(token):
 
     if len(words_prel) > 1:
         for element in words_prel:
-            if id_to_word_pos[str(element)][0]["form"] == token.lemma_:
+            if id_to_word_pos.find_id_to_word_pos_form(element) == token.lemma_:
                 id = element
 
     elif len(words_prel) == 1:
         id = words_prel[0]
 
     elif len(words_prel) == 0:
-        words_found = word_to_id_pos.get(
-            token.lemma_, word_to_id_pos.get(token_text, UNIDENTIFIED_TOKEN)
+        words_found = word_to_id_pos.find_word_id_pos_double_verification(
+            token.lemma_,
+            token_text
         )
 
         if words_found != UNIDENTIFIED_TOKEN:
@@ -105,7 +104,7 @@ def get_all_forms(token):
         else:
             return []
 
-    result = id_to_inflected_forms[id]
+    result = id_to_inflected_forms.find_id_to_inflected_forms(id)
 
     return result
 
@@ -249,10 +248,7 @@ def find_inflection_possibilites(token, inflected_forms, pos_wanted):
 
     if inflected_forms != ["UNKNOWN"]:
         for inflected_form in inflected_forms:
-            inflectionId = mapare["DEXONLINE_MORPH"].get(
-                str(inflected_form["inflectionId"]),
-                "UNKNOWN"
-            )[1]
+            inflectionId = mapare.find_dexonline_pos_id(inflected_form["inflectionId"])
             
             inflected_form_id = str(inflected_form["inflectionId"])
 
@@ -285,7 +281,7 @@ def find_matching_lexemeIds(token, possible_lexeme_ids, pos_wanted):
     lexeme_ids = [] 
 
     for lexemeId in possible_lexeme_ids:
-        variant = id_to_word_pos.get(str(lexemeId), "UNKNOWN")[0]    
+        variant = id_to_word_pos.find_id_to_word_pos(lexemeId)   
         if variant['pos'] == pos_wanted:
             lexeme_ids.append(lexemeId)
         elif variant['pos'] in ["VT", "V"] and pos_wanted in ["V", "VT"]:
@@ -299,7 +295,7 @@ def find_matching_lexemeIds(token, possible_lexeme_ids, pos_wanted):
 def find_entryIds(lexeme_ids):
     entry_ids = []
     for lexemeId in lexeme_ids:
-        all_entries = entry_lexeme.get(str(lexemeId), ["no entry"])
+        all_entries = entry_lexeme.find_entry_lexeme(lexemeId)
         if all_entries != ["no entry"]:
             for entry in all_entries:
                 entry_ids.append(entry)
@@ -309,7 +305,7 @@ def find_entryIds(lexeme_ids):
 def find_treeIds(entry_ids):
     tree_ids = []
     for entryId in entry_ids:
-        tree_entries = tree_entry.get(str(entryId), ["no entry tree"])
+        tree_entries = tree_entry.find_tree_entry(entryId)
         if tree_entries != ["no entry tree"]:
             for treeId in tree_entries:
                 tree_ids.append(treeId)
@@ -320,78 +316,9 @@ def find_meaningIds(tree_ids):
     meaning_ids = []
 
     for treeId in tree_ids:
-        all_meaningIds = relation.get(str(treeId), ["no relation"])
+        all_meaningIds = relation.find_relation(str(treeId))
         if all_meaningIds != ["no relation"]:
             for meaningId in all_meaningIds:
                 meaning_ids.append(meaningId)
 
     return meaning_ids
-
-
-def synonyms_builder(token, pos_wanted):
-    token_text = re.sub('[^a-zA-ZăâîșțĂÂÎȘȚ]', '', token.text.lower())
-    inflected_forms = all_inflected_forms.get(token_text, ["UNKNOWN"])
-    
-    inflection_possibilities = find_inflection_possibilites(token, inflected_forms, pos_wanted)
-    possible_lexeme_ids = find_lexeme_ids(inflected_forms)
-    lexeme_ids = find_matching_lexemeIds(token, possible_lexeme_ids, pos_wanted)
-    entry_ids = find_entryIds(lexeme_ids)
-    tree_ids = find_treeIds(entry_ids)
-    meaning_ids = find_meaningIds(tree_ids)
-
-    candidate_synonyms_base_form = []
-    
-    for meaningId in meaning_ids:
-        possible_synonyms = synonyms.get(str(meaningId), ["no synonyms"])
-        if possible_synonyms != ["no synonyms"]:
-            for synonym in possible_synonyms:
-                syn_to_add = re.sub('[^a-zA-ZăâîșțĂÂÎȘȚ ]', '', synonym[1]).split(" ")
-                
-                for syn in syn_to_add:
-                    syn_to_add_helper = all_inflected_forms.get(syn, [{"lexemeId": "UNKNOWN"}])
-                    if syn_to_add == ["UNKOWN"]:
-                        break
-
-                    syn_tuple = (syn, syn_to_add_helper[0].get("lexemeId", "dummy"))
-                    if syn_tuple not in candidate_synonyms_base_form and syn_tuple[0] != token_text:
-                        candidate_synonyms_base_form.append(syn_tuple)
-
-    candidate_synonyms_base_form = [syn for i, syn in enumerate(candidate_synonyms_base_form) if i == 0 or syn[1] != candidate_synonyms_base_form[i-1][1]]
-
-    return inflection_possibilities, candidate_synonyms_base_form
-
-def is_valid_for_syn(token):
-    if token.pos_ == "PUNCT":
-        return False
-    if "aux" in token.dep_:
-        return False
-    if not token.text.isalpha():
-        return False
-    return True
-
-def get_synonyms(token):
-    if is_valid_for_syn(token):
-        pos_found = ud_to_dex[token.pos_]
-        inflection_possibilites, candidate_synonyms_base_form = synonyms_builder(token, pos_found)
-        
-
-        synonyms_found = []
-        for syn in candidate_synonyms_base_form:
-            inflected_forms_syn = id_to_inflected_forms.get(str(syn[1]), [{"form": "no pos", "pos": "no form"}])
-            
-            for inflectionId in inflection_possibilites:
-                inflection = mapare["DEXONLINE_MORPH"].get(
-                                str(inflectionId),
-                                "UNKNOWN"
-                            )[0]
-                for pos_syn in inflected_forms_syn:
-                    pos_found_on_syn = pos_syn.get("pos")
-                    form_found_on_syn = pos_syn.get("form")
-                
-                    if pos_found_on_syn == inflection:
-                            if form_found_on_syn not in synonyms_found:
-                                synonyms_found.append(form_found_on_syn)
-
-        return synonyms_found
-    else:
-        return [f"The token: '{token.text}' is not eligible for synonym search."]
