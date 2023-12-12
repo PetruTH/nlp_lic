@@ -273,23 +273,23 @@ Token.set_extension("get_synonyms", method=get_synonyms, force=True)
 """
 
 
-def main():
-    import time
-    import spacy
+# def main():
+#     import time
+#     import spacy
 
-    t1 = time.time()
-    # reader = open("/Users/inttstbrd/Desktop/licenta/nlp_lic/text.txt", "r")
-    # text = reader.read()
-    text = "PLantai un copac. Are harbuz sinonim?"
-    nlp = spacy.load("ro_core_news_sm")
-    doc = nlp(text)
-    # doc = nlp(doc._.oltenizare())
-    print(doc)
-    for token in doc:    
-        print(token, "sinonime:", token._.get_synonyms())
+#     t1 = time.time()
+#     # reader = open("/Users/inttstbrd/Desktop/licenta/nlp_lic/text.txt", "r")
+#     # text = reader.read()
+#     text = "PLantai un copac. Are harbuz sinonim?"
+#     nlp = spacy.load("ro_core_news_sm")
+#     doc = nlp(text)
+#     # doc = nlp(doc._.oltenizare())
+#     print(doc)
+#     for token in doc:    
+#         print(token, "sinonime:", token._.get_synonyms())
 
-    t2 = time.time() - t1
-    print("TIMP: ", t2)
+#     t2 = time.time() - t1
+#     print("TIMP: ", t2)
 
 
-main()
+# main()
