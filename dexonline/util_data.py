@@ -10,32 +10,38 @@ reflexive_short_to_long_form = {
     "v-": "vă",
     "s-": "se",
     "ne-": "ne",
-    "te-": "te"
+    "te-": "te",
 }
 
 ud_to_dex = {
-        "VERB": "V",
-        "AUX": "V",
-        "PART": "I",
-        "NOUN": "M",
-        "PROPN": "SP",
-        "PRON": "P",
-        "DET": "P",
-        "SCONJ": "I",
-        "CCONJ": "I",
-        "NUM": "P",
-        "INTJ": "I",
-        "ADV": "I",
-        "ADP": "I",
-        "ADJ": "A"
-   }
+    "VERB": "V",
+    "AUX": "V",
+    "PART": "I",
+    "NOUN": "M",
+    "PROPN": "SP",
+    "PRON": "P",
+    "DET": "P",
+    "SCONJ": "I",
+    "CCONJ": "I",
+    "NUM": "P",
+    "INTJ": "I",
+    "ADV": "I",
+    "ADP": "I",
+    "ADJ": "A",
+}
 end_of_phrase = ["!", "?", ".", "\n"]
 
 json_archive = "util/utils_json.zip"
-json_archive_url = f"https://github.com/PetruTH/nlp_lic/releases/download/Resources/utils_json.zip"
+realeses_domain = "https://github.com/PetruTH/nlp_lic/releases/"
+json_archive_url = f"{realeses_domain}download/Resources/utils_json.zip"
+
 UNIDENTIFIED_TOKEN = "unidentified"
 MAPARE_PATH = "util/forme_morfologice.json"
 ALL_INFLECTED_FORMS_PATH = "util/inflected_form_lexemeId_inflectionId.json"
 WORD_TO_ID_POS_PATH = "util/word_id_pos.json"
 ID_TO_WORD_POS_PATH = "util/id_word_pos.json"
 ID_TO_INFLECTED_FORMS_PATH = "util/wordId_inflected_forms.json"
+RELATION = "util/relation.json"
+TREE_ENTRY = "util/tree_entry.json"
+ENTRY_LEXEME = "util/entry_lexeme.json"
+SYNONYMS = "util/synonyms.json"
