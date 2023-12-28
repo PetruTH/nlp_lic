@@ -168,6 +168,19 @@ def json_creator_synonyms_storage(cursor):
         json.dump(json_dict, fisier_json, indent=4, sort_keys=True)
 
 
+def json_creator_context(cursor):
+    json_dict = {}
+    cursor.execute("select treeId, internalRep from Meaning")
+    for row in cursor:
+        if row[0] not in json_dict.keys():
+            json_dict[row[0]] = [row[1]]
+        else:
+            json_dict[row[0]].append(row[1])
+    
+    with open("context.json", "w") as fisier_json:
+        json.dump(json_dict, fisier_json, indent=4, sort_keys=True)
+
+
 # def main():
 #     """
 #     If there is need for an update, uncomment following function
@@ -175,19 +188,20 @@ def json_creator_synonyms_storage(cursor):
 #     """
 
 #     cursor = connect_to_db().cursor()
-
-#     # calling json_creators functions to store all data needed from DB
-#     # json_creator_lexeme_info(cursor)
-#     # print("done 1/3")
-#     # json_creator_inflected_forms(cursor)
-#     # print("done 2/3")
-#     # json_creator_inflected_form_id_and_pos(cursor)
-#     # print("done 3/3")
-#     # json_creator_wordId_form_pos(cursor)
-#     # json_creator_entrylexeme(cursor)
-#     # json_creator_entrytree(cursor)
-#     # json_creator_relation(cursor)
-#     # json_creator_synonyms_storage(cursor)
+# 
+    # calling json_creators functions to store all data needed from DB
+    # json_creator_lexeme_info(cursor)
+    # print("done 1/3")
+    # json_creator_inflected_forms(cursor)
+    # print("done 2/3")
+    # json_creator_inflected_form_id_and_pos(cursor)
+    # print("done 3/3")
+    # json_creator_wordId_form_pos(cursor)
+    # json_creator_entrylexeme(cursor)
+    # json_creator_entrytree(cursor)
+    # json_creator_relation(cursor)
+    # json_creator_synonyms_storage(cursor)
+    # json_creator_context(cursor)
 
 
 # main()

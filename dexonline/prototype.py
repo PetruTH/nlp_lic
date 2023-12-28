@@ -5,7 +5,7 @@ from dexonline.util_data import (
     banned_pos,
     ud_to_dex
 )
-
+from typing import Tuple
 from dexonline.data_worker import (
     get_all_forms,
     validate_token,
@@ -22,11 +22,12 @@ from dexonline.data_worker import (
     all_inflected_forms,
     synonyms,
     id_to_inflected_forms,
+    context
 )
 import re
 
 
-def oltenizare_worker(doc):
+def oltenizare_worker(doc: Doc) -> list[str]:
     """
     This function will find every at a perfect present tense and
     turn it into its past perfect form.
@@ -44,14 +45,12 @@ def oltenizare_worker(doc):
 
             elif (
                 doc[i].dep_ == "ROOT"
-                and doc[i - 1].dep_ == "aux:pass"
-                and doc[i - 2].dep_ == "aux"
+                and doc[i-1].dep_ == "aux:pass"
+                and doc[i-2].dep_ == "aux"
             ):
                 # handle cases like these: "Eu am fost plecat."
                 if actual_pers == "" and actual_num == "":
-                    actual_num, actual_pers = get_person_and_number(
-                        doc[i-2]
-                    )
+                    actual_num, actual_pers = get_person_and_number(doc[i-2])
                 new_phrase.append(
                     get_wanted_form(
                         doc[i-1], "perfect simplu", actual_pers, actual_num
@@ -65,17 +64,18 @@ def oltenizare_worker(doc):
                 and doc[i-2].dep_ == "aux"
             ):
                 if actual_pers == "" and actual_num == "":
-                    actual_num, actual_pers = get_person_and_number(
-                        doc[i-2]
-                    )
+                    actual_num, actual_pers = get_person_and_number(doc[i-2])
                 new_phrase.append(
                     get_wanted_form(
-                        doc[i], "perfect simplu", actual_pers, actual_num
-                    )
+                                    doc[i],
+                                    "perfect simplu",
+                                    actual_pers,
+                                    actual_num
+                                )
                 )
 
             elif doc[i].dep_ in root_forms and doc[i-1].dep_ == "aux":
-                if doc[i - 2].dep_ == "aux":
+                if doc[i-2].dep_ == "aux":
                     new_phrase += [doc[i-2].text, doc[i-1].text, doc[i].text]
                     i += 2
 
@@ -83,8 +83,8 @@ def oltenizare_worker(doc):
                     # handle cases like these: "Eu am plecat"
                     # ensure that the construction found
                     # (aux + verb) is not at a future tense
-                    if doc[i].morph.get("VerbForm")[0] != "Inf":
-                        if doc[i - 1].pos_ == "AUX":
+                    if doc[i].morph.get("VerbForm", ["UNKNONWN"])[0] != "Inf":
+                        if doc[i-1].pos_ == "AUX":
                             if actual_pers == "" and actual_num == "":
                                 # if person and number paramateres cant be
                                 # found from subject of a phrase,
@@ -92,7 +92,7 @@ def oltenizare_worker(doc):
                                 (
                                     actual_num,
                                     actual_pers,
-                                ) = get_person_and_number(doc[i - 1])
+                                ) = get_person_and_number(doc[i-1])
                             new_phrase.append(
                                 get_wanted_form(
                                     doc[i],
@@ -108,16 +108,16 @@ def oltenizare_worker(doc):
                                 (
                                     actual_num,
                                     actual_pers,
-                                ) = get_person_and_number(doc[i - 1])
+                                ) = get_person_and_number(doc[i-1])
                             new_phrase.append(doc[i].text)
 
                     else:
                         # the construction is at a future tense
-                        new_phrase.append(doc[i - 1].text)
+                        new_phrase.append(doc[i-1].text)
                         new_phrase.append(doc[i].text)
 
             elif doc[i].dep_ == "aux:pass" and doc[i].lemma_ == "fi":
-                if doc[i - 1].dep_ == "aux":
+                if doc[i-1].dep_ == "aux":
                     pass
 
                 else:
@@ -145,7 +145,7 @@ def oltenizare_worker(doc):
     return new_phrase
 
 
-def oltenizare(doc):
+def oltenizare(doc: Doc) -> str:
     new_phrase = oltenizare_worker(doc)
     phrase_to_return = ""
 
@@ -161,9 +161,9 @@ def oltenizare(doc):
             phrase_to_return += new_phrase[i]
 
         else:
-            if new_phrase[i - 1] in end_of_phrase:
+            if new_phrase[i-1] in end_of_phrase:
                 phrase_to_return += " " + new_phrase[i].capitalize()
-            elif new_phrase[i - 1][-1] == "-":
+            elif new_phrase[i-1][-1] == "-":
                 phrase_to_return += new_phrase[i]
             else:
                 phrase_to_return += " " + new_phrase[i]
@@ -171,7 +171,7 @@ def oltenizare(doc):
     return phrase_to_return
 
 
-def synonyms_builder(token, pos_wanted):
+def synonyms_builder(token: Token, pos_wanted: str) -> Tuple[list[str], list[str], list[str]]:
     """
     This function will extract each synonym found for a certain word at a
     base form.
@@ -181,12 +181,18 @@ def synonyms_builder(token, pos_wanted):
         candidates_synonyms_base_form = a list of synonyms at a base form
     """
 
-    token_text = re.sub('[^a-zA-ZăâîșțĂÂÎȘȚ]', '', token.text.lower())
+    token_text = re.sub("[^a-zA-ZăâîșțĂÂÎȘȚ]", "", token.text.lower())
     inflected_forms = all_inflected_forms.find_all_inflected_forms(token_text)
-    
-    inflection_possibilities = find_inflection_possibilites(token, inflected_forms, pos_wanted)
+
+    inflection_possibilities = find_inflection_possibilites(
+        token, inflected_forms, pos_wanted
+    )
     possible_lexeme_ids = find_lexeme_ids(inflected_forms)
-    lexeme_ids = find_matching_lexemeIds(token, possible_lexeme_ids, pos_wanted)
+    lexeme_ids = find_matching_lexemeIds(
+                                            token,
+                                            possible_lexeme_ids,
+                                            pos_wanted
+                                        )
     entry_ids = find_entryIds(lexeme_ids)
     tree_ids = find_treeIds(entry_ids)
     meaning_ids = find_meaningIds(tree_ids)
@@ -197,26 +203,33 @@ def synonyms_builder(token, pos_wanted):
         possible_synonyms = synonyms.find_synonyms(meaningId)
         if possible_synonyms != ["no synonyms"]:
             for synonym in possible_synonyms:
-                syn_to_add = re.sub('[^a-zA-ZăâîșțĂÂÎȘȚ ]', '', synonym[1]).split(" ")
-                
+                syn_to_add = re.sub("[^a-zA-ZăâîșțĂÂÎȘȚ ]", "", synonym[1])
+                syn_to_add = syn_to_add.split(" ")
+
                 for syn in syn_to_add:
-                    syn_to_add_helper = all_inflected_forms.find_all_inflected_forms(
-                                syn,
-                                unidentified={"lexemeId": "UNKNOWN"}
-                            )
+                    syn_helper = all_inflected_forms.find_all_inflected_forms(
+                        syn, unidentified={"lexemeId": "UNKNOWN"}
+                    )
                     if syn_to_add == ["UNKOWN"]:
                         break
 
-                    syn_tuple = (syn, syn_to_add_helper[0].get("lexemeId", "dummy"))
-                    if syn_tuple not in candidate_synonyms_base_form and syn_tuple[0] != token_text:
+                    syn_tuple = (syn, syn_helper[0].get("lexemeId", "dummy"))
+                    if (
+                        syn_tuple not in candidate_synonyms_base_form
+                        and syn_tuple[0] != token_text
+                    ):
                         candidate_synonyms_base_form.append(syn_tuple)
 
-    candidate_synonyms_base_form = [syn for i, syn in enumerate(candidate_synonyms_base_form) if i == 0 or syn[1] != candidate_synonyms_base_form[i-1][1]]
+    candidate_synonyms_base_form = [
+        syn
+        for i, syn in enumerate(candidate_synonyms_base_form)
+        if i == 0 or syn[1] != candidate_synonyms_base_form[i-1][1]
+    ]
 
-    return inflection_possibilities, candidate_synonyms_base_form
+    return tree_ids, inflection_possibilities, candidate_synonyms_base_form
 
 
-def is_valid_for_syn(token):
+def is_valid_for_syn(token: Token) -> bool:
     if token.pos_ == "PUNCT":
         return False
     if "aux" in token.dep_:
@@ -225,29 +238,40 @@ def is_valid_for_syn(token):
         return False
     return True
 
-def get_synonyms(token):
+
+def get_synonyms(token: Token) -> list[str]:
     if is_valid_for_syn(token):
         pos_found = ud_to_dex[token.pos_]
-        inflection_possibilites, candidate_synonyms_base_form = synonyms_builder(token, pos_found)
+        tree_ids, inflection_possibilites, possible_synonyms = synonyms_builder(
+            token, pos_found
+        )
 
         synonyms_found = []
-        for syn in candidate_synonyms_base_form:
-            inflected_forms_syn = id_to_inflected_forms.find_id_to_inflected_forms(str(syn[1]))
+        for syn in possible_synonyms:
+            all_forms_syns = id_to_inflected_forms.find_id_to_inflected_forms(
+                str(syn[1])
+            )
 
             for inflectionId in inflection_possibilites:
-                inflection = mapare.find_dexonline_pos_detail(str(inflectionId))
+                inflection = mapare.find_dexonline_pos_detail(
+                                        str(inflectionId)
+                                    )
 
-                for pos_syn in inflected_forms_syn:
+                for pos_syn in all_forms_syns:
                     pos_found_on_syn = pos_syn.get("pos")
                     form_found_on_syn = pos_syn.get("form")
                     if pos_found_on_syn == inflection:
-                            if form_found_on_syn not in synonyms_found:
-                                synonyms_found.append(form_found_on_syn)
+                        if form_found_on_syn not in synonyms_found:
+                            synonyms_found.append(form_found_on_syn)
 
+        contexts_found = {}
+        for treeId in tree_ids:
+            contexts_found[treeId] = context.find_context(treeId)            
 
-        return synonyms_found
+        return synonyms_found, contexts_found
     else:
-        return [f"The token: '{token.text}' is not eligible for synonym search."]
+        return []
+
 
 
 """
@@ -280,15 +304,15 @@ Token.set_extension("get_synonyms", method=get_synonyms, force=True)
 #     t1 = time.time()
 #     # reader = open("/Users/inttstbrd/Desktop/licenta/nlp_lic/text.txt", "r")
 #     # text = reader.read()
-#     text = "PLantai un copac. Are harbuz sinonim?"
+#     text = "Eu am plantat un copac. Are harbuz sinonim?"
 #     nlp = spacy.load("ro_core_news_sm")
 #     doc = nlp(text)
-#     # doc = nlp(doc._.oltenizare())
+#     doc = nlp(doc._.oltenizare())
 #     print(doc)
-#     for token in doc:    
+#     for token in doc:
 #         print(token, "sinonime:", token._.get_synonyms())
 
-#     t2 = time.time() - t1
+#     t2 = time.time()-t1
 #     print("TIMP: ", t2)
 
 

@@ -37,6 +37,7 @@ json_archive_url = f"{realeses_domain}download/Resources/utils_json.zip"
 
 UNIDENTIFIED_TOKEN = "unidentified"
 MAPARE_PATH = "util/forme_morfologice.json"
+CONTEXT_PATH = "util/context.json"
 ALL_INFLECTED_FORMS_PATH = "util/inflected_form_lexemeId_inflectionId.json"
 WORD_TO_ID_POS_PATH = "util/word_id_pos.json"
 ID_TO_WORD_POS_PATH = "util/id_word_pos.json"
