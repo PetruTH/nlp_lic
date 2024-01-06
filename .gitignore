@@ -1,6 +1,5 @@
 *.txt
 *.json
-*.ipynb
 .DS_Store
 __MACOSX
 .mypy_cache
