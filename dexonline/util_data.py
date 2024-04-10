@@ -13,6 +13,41 @@ reflexive_short_to_long_form = {
     "te-": "te",
 }
 
+diacritics = {
+      "ă": "a",
+      "â": "a",
+      "î": "i",
+      "ș": "s",
+      "ț": "t",
+      "č": "c",
+      "ş": "s",
+      "ž": "z",
+      "Ä": "A",
+      "Â": "A",
+      "Î": "I",
+      "Ș": "S",
+      "Ț": "T",
+      "Č": "C",
+      "Ș": "S",
+      "Ž": "Z",
+      "á": "a",
+      "é": "e",
+      "í": "i",
+      "ó": "o",
+      "ú": "u",
+      "ű": "u",
+      "Á": "A",
+      "É": "E",
+      "Í": "I",
+      "Ó": "O",
+      "Ú": "U",
+      "Ű": "U",
+      "ö": "o",
+      "Ö": "O",
+      "ü": "u",
+      "Ü": "U",
+    }
+
 ud_to_dex = {
     "VERB": "V",
     "AUX": "V",
@@ -28,12 +63,13 @@ ud_to_dex = {
     "ADV": "I",
     "ADP": "I",
     "ADJ": "A",
+    "X": "V"
 }
 end_of_phrase = ["!", "?", ".", "\n"]
 
-json_archive = "util/utils_json.zip"
+json_archive = "util/util.zip"
 realeses_domain = "https://github.com/PetruTH/nlp_lic/releases/"
-json_archive_url = f"{realeses_domain}download/Resources/utils_json.zip"
+json_archive_url = f"{realeses_domain}download/Resources/util.zip"
 
 UNIDENTIFIED_TOKEN = "unidentified"
 MAPARE_PATH = "util/forme_morfologice.json"
