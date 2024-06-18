@@ -1,5 +1,5 @@
-from dexonline.data_loader import load_jsons
-from dexonline.util_data import (
+from dexflex.data_loader import load_jsons
+from dexflex.util_data import (
     UNIDENTIFIED_TOKEN,
     ud_to_dex,
     banned_pos,
@@ -38,8 +38,8 @@ def get_all_forms_worker(token: Token) -> [int]:
                 token_text, token_text.lower()
             )
 
-    if all_inflected_words_found == UNIDENTIFIED_TOKEN:
-        return []
+    if all_inflected_words_found[0] == UNIDENTIFIED_TOKEN:
+        return [-1]
 
     words_prel = []
     only_one_word = [word['lexemeId'] for word in all_inflected_words_found]
@@ -90,7 +90,10 @@ def get_all_forms(token: Token) -> [{str, str}]:
                 id = element
 
     elif len(words_prel) == 1:
-        id = words_prel[0]
+        if words_prel[0] == -1:
+            return []
+        else:
+            id = words_prel[0]
 
     elif len(words_prel) == 0:
         words_found = word_to_id_pos.find_word_id_pos_double_verification(token.lemma_, token_text)
@@ -552,9 +555,10 @@ def build_inflection_for_noun(token, inflection_dex_details):
         dex_pos = "Adjectiv"
 
     found_dex_pos = f"{dex_pos} {gender}, {case}, {number}, {definite}"
+    found_dex_pos2 = f"{dex_pos} neutru, {case}, {number}, {definite}"
     if found_dex_pos == inflection_dex_details:
         return True
-    elif f"{dex_pos} neutru, {case}, {number}, {definite}" == inflection_dex_details:
+    elif found_dex_pos2 == inflection_dex_details:
         return True
     return False
     

@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='dexonline',
+    name='dexflex',
     description='Spacy plugin working based on dexonline database',
     author='Cristea Petru-Theodor',
     version='0.0.1',

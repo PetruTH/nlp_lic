@@ -1,7 +1,7 @@
 banned_ent_types = {"ORGANIZATION", "EVENT", "GPE", "LOC"}
 banned_pos = ["PUNCT", "SPACE"]
 reflexive_deps = ["expl:poss", "expl:pv", "iobj", "obj"]
-root_forms = ["ROOT", "advcl", "acl", "cop", "conj", "parataxis"]
+root_forms = ["ROOT", "advcl", "acl", "cop", "conj", "csubj", "ccomp:pmod", "parataxis", "ccomp"]
 
 reflexive_short_to_long_form = {
     "mi-": "îmi",
@@ -11,6 +11,22 @@ reflexive_short_to_long_form = {
     "s-": "se",
     "ne-": "ne",
     "te-": "te",
+    "i-": "îi",
+    "l-": "îl",
+    "m-": "mă",
+    "te-": "te",
+    "Mi-": "Îmi",
+    "Ți-": "Îți",
+    "Și-": "Își",
+    "V-": "Vă",
+    "S-": "Se",
+    "Ne-": "Ne",
+    "Te-": "Te",
+    "I-": "Îi",
+    "L-": "Îl",
+    "M-": "Mă",
+    "Te-": "Te",
+
 }
 
 diacritics = {

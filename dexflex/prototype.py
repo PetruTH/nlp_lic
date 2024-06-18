@@ -2,7 +2,7 @@ import numpy
 from spacy.tokens import Token, Doc
 import spacy
 nlp = spacy.load("ro_core_news_sm")
-from dexonline.util_data import (
+from dexflex.util_data import (
     root_forms,
     end_of_phrase,
     banned_pos,
@@ -10,7 +10,7 @@ from dexonline.util_data import (
 )
 import torch
 from typing import Tuple
-from dexonline.data_worker import (
+from dexflex.data_worker import (
     get_all_forms,
     validate_token,
     get_right_person_and_number,
@@ -22,8 +22,8 @@ from dexonline.data_worker import (
     mapare,
     id_to_inflected_forms
 )
-from dexonline.data_worker import approximate_syllables, get_context_for_each_candidate_syn, get_embeddings, get_similarity_scores_for_syns, synonyms_builder_step1
-from dexonline.json_creator import incarcare_eficienta
+from dexflex.data_worker import approximate_syllables, get_context_for_each_candidate_syn, get_embeddings, get_similarity_scores_for_syns, synonyms_builder_step1
+from dexflex.json_creator import incarcare_eficienta
 from wordfreq import zipf_frequency
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -37,7 +37,9 @@ def oltenizare_worker(doc: Doc) -> list[str]:
     new_phrase = []
     actual_pers = ""
     actual_num = ""
-    for i in range(0, len(doc)):
+    # print("OLTENIZARE")
+    docgen = iter(range(0, len(doc)))
+    for i in docgen:
         if doc[i].pos_ not in banned_pos:
             if doc[i].dep_ == "nsubj" or doc[i].dep_ == "nsubj:pass":
                 # extract data from the phrase-subject to get right form
@@ -47,24 +49,37 @@ def oltenizare_worker(doc: Doc) -> list[str]:
 
             elif (
                 doc[i].dep_ == "ROOT"
-                and doc[i-1].dep_ == "aux:pass"
+                and doc[i-1].dep_ in {"aux", "aux:pass", "cop"} 
                 and doc[i-2].dep_ == "aux"
             ):
                 # handle cases like these: "Eu am fost plecat."
+
                 if actual_pers == "" and actual_num == "":
                     actual_num, actual_pers = get_right_person_and_number(doc[i-2])
-                new_phrase.append(
-                    get_wanted_form(
-                        doc[i-1], "perfect simplu", actual_pers, actual_num
+
+                if doc[i].pos_ != "VERB":
+                    new_phrase.append(doc[i].text)
+               
+                elif doc[i-1].morph.get("VerbForm") == ["Part"]:
+                    new_phrase.append(
+                        get_wanted_form(
+                            doc[i-1], "perfect simplu", actual_pers, actual_num
+                        )
                     )
-                )
-                new_phrase.append(doc[i].text)
+                    new_phrase.append(doc[i].text)
+                elif doc[i-1].morph.get("VerbForm") == ["Inf"]:
+                    new_phrase += [doc[i-2].text, doc[i-1].text, doc[i].text]
+                    i += 2
+                
+                elif doc[i].morph.get("VerbForm") == ["Inf"]:
+                    new_phrase += [doc[i].text]
 
             elif (
                 doc[i].dep_ == "ROOT"
                 and doc[i-1].dep_ == "cc"
                 and doc[i-2].dep_ == "aux"
             ):
+                
                 if actual_pers == "" and actual_num == "":
                     actual_num, actual_pers = get_right_person_and_number(doc[i-2])
                 new_phrase.append(
@@ -75,34 +90,67 @@ def oltenizare_worker(doc: Doc) -> list[str]:
                                     actual_num
                                 )
                 )
+            
+            elif (
+                doc[i].dep_ == "ROOT"
+                and doc[i-2].dep_ == "aux"
+            ):
+                
+                if actual_pers == "" and actual_num == "":
+                    actual_num, actual_pers = get_right_person_and_number(doc[i-2])
+                
+                if doc[i].morph.get("VerbForm") == ["Part"]:
+                    new_phrase.append(
+                        get_wanted_form(
+                                        doc[i],
+                                        "perfect simplu",
+                                        actual_pers,
+                                        actual_num
+                                    )
+                    )
+                else:
+                    new_phrase.append(doc[i].text)
 
             elif doc[i].dep_ in root_forms and doc[i-1].dep_ == "aux":
                 if doc[i-2].dep_ == "aux":
-                    new_phrase += [doc[i-2].text, doc[i-1].text, doc[i].text]
+                    if len(new_phrase) > 0 and doc[i-2].text == new_phrase[-1]:            
+                        new_phrase += [doc[i-1].text, doc[i].text]
+                    else:
+                        new_phrase += [doc[i-2].text, doc[i-1].text, doc[i].text]
+            
                     i += 2
 
                 else:
                     # handle cases like these: "Eu am plecat"
                     # ensure that the construction found
                     # (aux + verb) is not at a future tense
-                    if doc[i].morph.get("VerbForm", ["UNKNONWN"])[0] != "Inf":
+                
+                    if doc[i].morph.get("VerbForm", ["UNKNONWN"])[0] in {"Part"}:
                         if doc[i-1].pos_ == "AUX":
-                            if actual_pers == "" and actual_num == "":
+                            # if actual_pers == "" and actual_num == "":
                                 # if person and number paramateres cant be
                                 # found from subject of a phrase,
                                 # the verb will get this from its inflection
-                                (
-                                    actual_num,
-                                    actual_pers,
-                                ) = get_right_person_and_number(doc[i-1])
-                            new_phrase.append(
-                                get_wanted_form(
+                            (
+                                actual_num,
+                                actual_pers,
+                            ) = get_right_person_and_number(doc[i-1])
+                            # print(get_right_person_and_number(doc[i-1]))
+                            word_to_add = get_wanted_form(
                                     doc[i],
                                     "perfect simplu",
                                     actual_pers,
                                     actual_num,
                                 )
-                            )
+                            if word_to_add == "UNKNOWN":
+                                if doc[i-1].lemma_ == "avea":
+                                    new_phrase.append(doc[i-1].text)
+                                    
+                                new_phrase.append(
+                                    doc[i].text
+                                )
+                            else:
+                                new_phrase.append(word_to_add)
 
                         else:
                             # trick to handle exceptions found
@@ -114,30 +162,118 @@ def oltenizare_worker(doc: Doc) -> list[str]:
                             new_phrase.append(doc[i].text)
 
                     else:
-                        # the construction is at a future tense
-                        new_phrase.append(doc[i-1].text)
+                        if doc[i].dep_ != "cop":
+                            if len(new_phrase) > 0:
+                                if doc[i-1].text != new_phrase[-1]:
+                            # the construction is at a future tense or cond opt
+                                    new_phrase.append(doc[i-1].text)
+                            else:
+                                new_phrase.append(doc[i].text)
+                            
                         new_phrase.append(doc[i].text)
+                        
 
             elif doc[i].dep_ == "aux:pass" and doc[i].lemma_ == "fi":
+                    # AM COMENTAT PT EXEMPLUL ASTA El va pleca, dar ieri ar fi stat apoi a plecat.
                 if doc[i-1].dep_ == "aux":
+                    if doc[i+1].dep_ in root_forms and doc[i+1].pos_ not in {"VERB", "AUX"}:
+                        (
+                            actual_num,
+                            actual_pers,
+                        ) = get_right_person_and_number(doc[i-1])
+                        new_phrase.append(get_wanted_form(
+                                    doc[i],
+                                    "perfect simplu",
+                                    actual_pers,
+                                    actual_num,
+                                ))
+                    elif doc[i+1].dep_ not in {"ROOT"}:
+                    # else:
+                        new_phrase.append(doc[i].text)
                     pass
 
                 else:
                     new_phrase.append(doc[i].text)
 
+            elif doc[i].dep_ == "det" and doc[i].pos_ == "AUX" and doc[i+1].dep_ == "dep" and doc[i+1].pos_ == "AUX":
+                (
+                    actual_num,
+                    actual_pers,
+                ) = get_right_person_and_number(doc[i])
+
+                new_phrase.append(
+                    get_wanted_form(
+                                    doc[i+1],
+                                    "perfect simplu",
+                                    actual_pers,
+                                    actual_num,
+                                )
+                )
+                next(docgen)
+
+
             elif doc[i].dep_ == "aux":
-                pass
+                add = True
+                anc_verb = {}
+                for t in doc[i].ancestors:
+                    if t.pos_ in {"VERB", "AUX"}:
+                        add = False
+                        anc_verb = t
+                        
+                if anc_verb == {}:
+                    anc_verb=t
 
+                if doc[i+1].dep_ == "mark" and doc[i+1].pos_ in {"ADP", "PART"} and doc[i+2].dep_ == "ROOT" and doc[i+2].pos_ == "VERB":
+                    new_phrase += [doc[i].text, doc[i+1].text, doc[i+2].text]
+                    next(docgen)
+                    next(docgen)
+                    # next(docgen)
+                    # continue
+
+                elif doc[i+1].morph.get("VerbForm") == ["Part"] or anc_verb.morph.get("VerbForm") == ["Part"]:
+                    if doc[i].morph.get("VerbForm") in [["Fin"], ["Inf"]]:
+                        new_phrase.append(doc[i].text)
+                        new_phrase.append(doc[i+1].text)
+                        next(docgen)
+                    elif doc[i].text in {"ar", "ai", "am", "aș", "ați"} and doc[i+1].morph.get("VerbForm") in [["Fin"], ["Inf"]]:
+                        new_phrase.append(doc[i].text)
+                        new_phrase.append(doc[i+1].text)
+                        new_phrase.append(doc[i+2].text)
+                        next(docgen)
+                        next(docgen)
+                   
+                    
+                elif add is True or doc[i+1].morph.get("VerbForm") == ["Inf"] or anc_verb.morph.get("VerbForm") == ["Inf"]:
+                    # print(new_phrase[-1], doc[i].text)
+                    if len(new_phrase) > 0:
+                        if new_phrase[-1] != doc[i].text:
+                            new_phrase.append(doc[i].text)
+                    else:
+                        new_phrase.append(doc[i].text)
+                else:
+                    new_phrase.append(doc[i].text)
+               
+            # elif doc[i].dep_ == "dep" and doc[i].dep_ == "dep" and doc[i].pos_ == and doc[i].dep
+                        # A FOST A MAMEI
+                
             else:
-                if doc[i].pos_ == "PRON":
+                if doc[i].pos_ == "PRON" or doc[i].dep_ == "expl":
                     if doc[i].text[-1] == "-":
-                        word_added = forme_reflexive_verifier(doc[i])
 
+                        try:
+                            anc = list(doc[i].ancestors)[0]                            
+                            if anc.morph.get("VerbForm") == ["Part"]:
+                                word_added = forme_reflexive_verifier(doc[i])
+                            else:
+                                word_added = doc[i].text
+                        except:
+                            word_added = doc[i].text
                     else:
                         word_added = doc[i].text
-
                 else:
                     word_added = doc[i].text
+
+                # print(word_added, doc[i].pos_, doc[i].dep_,)
                 new_phrase.append(word_added)
 
         else:
@@ -155,12 +291,21 @@ def oltenizare(doc: Doc) -> str:
     phrase_to_return = ""
 
     for i in range(len(new_phrase)):
+        new_phrase[i] = new_phrase[i].replace("n-", "nu")
+        new_phrase[i] = new_phrase[i].replace("l-", "îl")
+        new_phrase[i] = new_phrase[i].replace("ţi-", "îţi")
+        new_phrase[i] = new_phrase[i].replace("le-", "le")
+        new_phrase[i] = new_phrase[i].replace("c-", "că")
+        
         # building the initial phrase back following the next
         # rule: word, word (or any other PUNCT)
         # edge-case 1: for "-" where the rule is word-word
         # edge-case 2: word. Word (the same for ?, !, \n)
-        if "-" in new_phrase[i]:
+        # print(new_phrase[i])
+        if "-" in new_phrase[i][1:]:
             phrase_to_return += " " + new_phrase[i]
+        elif "-" == new_phrase[i][0]:
+            phrase_to_return += "-"+new_phrase[i]
 
         elif not new_phrase[i].isalpha():
             phrase_to_return += new_phrase[i]
@@ -173,7 +318,18 @@ def oltenizare(doc: Doc) -> str:
             else:
                 phrase_to_return += " " + new_phrase[i]
 
-    return phrase_to_return
+    phrase_to_return = phrase_to_return.replace("--", "-")
+    
+    words = phrase_to_return.split()
+    phrase = []
+    for word in words:
+        if word.endswith("-o"):
+            word_modfied = f"o {word[:-2]}"
+        else:
+            word_modfied = word
+        phrase.append(word_modfied)
+    return " ".join(phrase) + "\n"
+
 
 def get_synonyms(token: Token, tree_id_forced = []) -> [str]:
     """
@@ -187,7 +343,7 @@ def get_synonyms(token: Token, tree_id_forced = []) -> [str]:
         candidate_synonyms_base_form = synonyms_builder_step2(meaning_ids, tree_id_forced, token)
 
         synonyms_found = []
-        # print(candidate_synonyms_base_form, "candidate la sinonime")
+
         for syn in candidate_synonyms_base_form:
             inflected_forms_syn = id_to_inflected_forms.find_id_to_inflected_forms(str(syn[1]))
 
@@ -242,7 +398,7 @@ def choose_meaning(contexts_found, actual_context):
         if score > max_score:
             max_score = score
             key_to_return = key
-
+ 
     return key_to_return
 
 
@@ -299,7 +455,7 @@ def get_matching_syns(token, actual_context, pos_found):
 
     try:
         if len(contexts_found.keys()) > 1:
-            chosen_context = str(choose_meaning(contexts_found=contexts_found, actual_context=actual_context))
+            chosen_context = str(choose_meaning(contexts_found, actual_context))
         else:
             chosen_context = str(list(contexts_found.keys())[0])
         syns_found_in_dex = token._.get_synonyms([chosen_context])
@@ -311,7 +467,18 @@ def get_matching_syns(token, actual_context, pos_found):
             if syn == token.text[1:] or syn == syns_found_in_dex[i-1][1:]:
                 continue
             else:
-                syns_to_return.append((syn, heuristic_comparator(syn, actual_context, token.pos_, i, len(syns_found_in_dex))))
+                syns_to_return.append(
+                    (
+                        syn, 
+                        heuristic_comparator(
+                            syn, 
+                            actual_context,
+                            token.pos_,
+                            i,
+                            len(syns_found_in_dex)
+                        )
+                    )
+                )
         
         return sorted(syns_to_return, key=lambda x: x[1], reverse=True)
     
@@ -334,8 +501,8 @@ def get_matching_syns(token, actual_context, pos_found):
 
 # text = "Eu am mers la un copac. Are harbuz sinonim?"
 # doc = nlp(text)
-# # doc = nlp(doc._.oltenizare())
-# print(doc)
+# doc = nlp(doc._.oltenizare())
+# # print(doc)
 # def main():
 #     for token in doc:
 #         if token.text == cuv:

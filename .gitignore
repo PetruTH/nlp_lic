@@ -8,3 +8,5 @@ __MACOSX
 build
 *.egg-info
 dataset
+*.tsv
+*.feather

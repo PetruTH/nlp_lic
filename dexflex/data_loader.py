@@ -5,7 +5,7 @@ import requests
 import os
 from tqdm import tqdm
 import logging
-from dexonline.util_data import (
+from dexflex.util_data import (
     MAPARE_PATH,
     ID_TO_WORD_POS_PATH,
     WORD_TO_ID_POS_PATH,
@@ -19,7 +19,7 @@ from dexonline.util_data import (
     json_archive,
     json_archive_url,
 )
-from dexonline.util_data import UNIDENTIFIED_TOKEN
+from dexflex.util_data import UNIDENTIFIED_TOKEN
 
 
 logger = logging.getLogger(__name__)
