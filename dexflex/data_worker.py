@@ -314,7 +314,7 @@ def find_meaningIds(tree_ids: str) -> str:
 
 
 from spacy.tokens import Token
-from dexonline.json_creator import incarcare_eficienta
+from dexflex.json_creator import incarcare_eficienta
 
 def synonyms_builder_step1(token: Token, pos_wanted: str)  -> ([str], [str]):
     """
