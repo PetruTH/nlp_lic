@@ -1,7 +1,7 @@
 import numpy
 from spacy.tokens import Token, Doc
 import spacy
-nlp = spacy.load("ro_core_news_sm")
+nlp = spacy.load("ro_core_news_lg")
 from dexflex.util_data import (
     root_forms,
     end_of_phrase,
@@ -328,7 +328,7 @@ def oltenizare(doc: Doc) -> str:
         else:
             word_modfied = word
         phrase.append(word_modfied)
-    return " ".join(phrase) + "\n"
+    return " ".join(phrase)
 
 
 def get_synonyms(token: Token, tree_id_forced = []) -> [str]:
@@ -376,7 +376,6 @@ def get_synonyms(token: Token, tree_id_forced = []) -> [str]:
 Token.set_extension("forms_", method=get_all_forms, force=True)
 Token.set_extension("is_valid", method=validate_token, force=True)
 Doc.set_extension("oltenizare", method=oltenizare, force=True)
-Token.set_extension("get_synonyms", method=get_synonyms, force=True)
 
 
 """
@@ -458,7 +457,7 @@ def get_matching_syns(token, actual_context, pos_found):
             chosen_context = str(choose_meaning(contexts_found, actual_context))
         else:
             chosen_context = str(list(contexts_found.keys())[0])
-        syns_found_in_dex = token._.get_synonyms([chosen_context])
+        syns_found_in_dex = get_synonyms(token, [chosen_context])
         
         syns_to_return = []
 
@@ -486,6 +485,21 @@ def get_matching_syns(token, actual_context, pos_found):
         print("no synonyms")
         pass
 
+
+def get_syns(target):
+    doc = nlp(target.doc)
+    for token in doc:
+        if token == target:
+            pos_found = ud_to_dex[token.pos_]
+            syns = get_matching_syns(token, actual_context=doc.text, pos_found=pos_found)
+            try:
+                return syns[:10]
+            except:
+                return []
+    return []
+
+
+Token.set_extension("get_syns", method=get_syns, force=True)
 
 
 # Uncomment the lines below to see a short demo
