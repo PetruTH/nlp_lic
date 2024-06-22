@@ -10,3 +10,4 @@ build
 dataset
 *.tsv
 *.feather
+util

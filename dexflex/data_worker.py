@@ -755,6 +755,8 @@ def approximate_syllables(word: str):
         next_char = word[i+1]
         if i+2 < len(word):
             next2_char = word[i+2]
+        else:
+            next2_char = ""
         # RULE1
         if current_char not in vowels and last_char in vowels and next_char in vowels:
             syllables.append(word[last_syllable_index : i])

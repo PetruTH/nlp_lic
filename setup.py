@@ -16,7 +16,7 @@ setup(
     name='dexflex',
     description='Spacy plugin working based on dexonline database',
     author='Cristea Petru-Theodor',
-    version='0.0.8',
+    version='0.0.9',
     author_email='petru.theodor@outlook.com',
     include_package_data=True,
     long_description=long_description,
