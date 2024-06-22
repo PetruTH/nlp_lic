@@ -135,7 +135,14 @@ def oltenizare_worker(doc: Doc) -> list[str]:
                                 actual_num,
                                 actual_pers,
                             ) = get_right_person_and_number(doc[i-1])
-                            # print(get_right_person_and_number(doc[i-1]))
+
+                            # additional verifier
+                            if doc[i-2].pos_ == "PRON":
+                                (
+                                    actual_num,
+                                    actual_pers,
+                                ) = get_right_person_and_number(doc[i-2])
+
                             word_to_add = get_wanted_form(
                                     doc[i],
                                     "perfect simplu",
