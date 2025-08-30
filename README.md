@@ -12,6 +12,8 @@ DexFlex is available on PyPI:
 
 pip install dexflex
 
+Note: On the first run, a setup script will be executed to fetch and prepare the dictionary data required by DexFlex.
+This process may take a few minutes depending on your internet connection.
 ---
 
 ## Features
@@ -64,7 +66,6 @@ pip install dexflex
 ```python
 from dexflex.prototype import *
 import spacy
-from spacy import displacy
 
 nlp = spacy.load("ro_core_news_lg")
 ```
