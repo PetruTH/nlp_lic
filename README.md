@@ -19,20 +19,16 @@ This process may take a few minutes depending on your internet connection.
 ## Features
 
 ### 🔹 Inflection Handling
-
-* For a given target word, extract **all inflectional forms**.
+For a given target word, extract **all inflectional forms**.
 
 ### 🔹 Tense Transformation
-
-* Automated switching between **past perfect** and **past simple**.
+Automated switching between **past perfect** and **past simple**.
 
 ### 🔹 Synonym Suggestions
-
-* Context-aware synonym generation.
+Context-aware synonym generation.
 
 ### 🔹 Voice Transformation
-
-* Convert **active → passive** voice and **passive → active** voice.
+Convert **active → passive** voice and **passive → active** voice.
 
 ---
 
