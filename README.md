@@ -1,6 +1,6 @@
 # DexFlex Documentation
 
-DexFlex is a Python package for advanced Romanian language processing.  
+DexFlex is a Python package for Romanian language processing.  
 It leverages [dexonline](https://github.com/dexonline/dexonline) to extract dictionary data, applies rule-based methods, and integrates **spaCy** with the Romanian model [`ro_core_news_lg`](https://spacy.io/models/ro).  
 The library provides functionality such as inflection handling, synonym suggestions, and transformations between tenses and voices.
 
@@ -45,7 +45,7 @@ Synonym generation is performed in **four steps**:
 
 ### Sorting Criteria
 
-* Llength of the word
+* Length of the word
 * Dictionary ordering
 * Approximate syllable count
 * Similarity with context embeddings
