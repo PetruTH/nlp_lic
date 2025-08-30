@@ -519,3 +519,340 @@ def get_matching_syns(token, actual_context, pos_found):
 #     print("TIMP: ", t2)
 
 # main()
+
+
+# import spacy
+
+# nlp = spacy.load("ro_core_news_sm")
+
+def identifica_diateza(sentence):
+    doc = nlp(sentence)
+    rezultate = []
+    diateza_pasiva_flags = {
+        "nsubj:pass": False,
+        "aux": False,
+        "obl:agent": False
+    }
+
+    diateza_reflexiva_flags = {
+        "expl": False,
+    }
+
+    
+    for token in doc:
+        for key in diateza_pasiva_flags.keys():
+            if token.dep_ in key or key in token.dep_:
+                diateza_pasiva_flags[key] = True
+
+        for key in diateza_reflexiva_flags.keys():
+            if (token.dep_ in key or key in token.dep_):
+                diateza_reflexiva_flags[key] = True
+            elif token.morph.get("Reflex", [None])[0] == "Yes" or (token.morph.get("Case", [None])[0] == "Acc" and token.morph.get("Strength", [None])[0] == "Weak"):
+                diateza_reflexiva_flags["expl"] = True
+        
+    
+    diateza_pasiva = True if all(diateza_pasiva_flags[key] for key in diateza_pasiva_flags) else False
+    diateza_reflexiva = True if all(diateza_reflexiva_flags[key] for key in diateza_reflexiva_flags) else False
+  
+    if diateza_pasiva is False and diateza_reflexiva is False:
+        diateza_activa = True
+    else:
+        diateza_activa = False        
+
+    rezultate_diateze = {
+        "activa": diateza_activa,
+        "pasiva": diateza_pasiva,
+        "reflexiva": diateza_reflexiva,
+    }
+
+    for key in rezultate_diateze:
+        if rezultate_diateze[key] == True:
+            return key
+
+def get_actual_inflection(token):
+    inflections = get_all_forms(token)
+
+    found_case = token.morph.get("Case", ["Acc,Nom"])[0]
+    if found_case in ["Acc,Nom", "Acc", "Nom"]:
+        found_case = "Nominativ-Acuzativ"
+    else:
+        found_case = "Genitiv-Dativ"
+
+    for inflection in inflections:
+        token_text = token.text
+        if token.pos_ != "PROPN":
+            token_text = token_text.lower()
+        if inflection["form"] == token_text:
+            if token.pos_ == "NOUN":
+                if found_case in inflection["pos"]:
+                    return inflection
+            else:
+                return inflection
+
+def get_new_subject(token, pos):
+    subtree = list(token.subtree)
+    phrase = " ".join([t.text for t in subtree])
+
+    if len(subtree) > 1:
+        return phrase
+    else:
+        return get_defined_word(token, pos)
+
+def get_right_aux_form(obj_pos, root_pos, obj_number):
+    aux = nlp("este")
+    aux_inflections_filtered_by_person = [form for form in get_all_forms(aux[0]) if "persoana a III-a" in form["pos"] and "Indicativ" in form["pos"]]
+
+    obj_pos_details = [x.strip() for x in obj_pos.split(",")]
+    root_pos_details = [x.strip() for x in root_pos.split(",")]
+
+    number = "plural"
+    if "plural" not in obj_pos_details:
+        number = "singular"
+    
+    aux_inflections_filtered_by_person_number = [form for form in aux_inflections_filtered_by_person if number in form["pos"]]
+
+    time_found = "prezent"
+    time_choices = ["prezent", "perfect simplu", "mai mult ca perfect", "imperfect", "participiu pasiv"]
+    for time in time_choices:
+        for detail in root_pos_details:
+            if time.lower() == detail.lower():
+                time_found = detail.lower()
+
+    if time_found == "participiu pasiv":
+        if obj_number == "Sing":
+            return "a fost"
+        else:
+            return "au fost"
+    else:
+        aux_inflection_filtered_by_person_number_time = [form for form in aux_inflections_filtered_by_person_number if time_found in form["pos"]]
+
+        return aux_inflection_filtered_by_person_number_time[0]["form"]
+    return None
+
+def get_verb_part(token):
+    inflections = get_all_forms(token)
+    part = [form for form in inflections if "Participiu pasiv" in form["pos"]]
+    return part[0]
+
+def get_new_root_form(root_verb_part, obj_token):
+    number = obj_token.morph.get("Number", [None])[0]
+    gender = obj_token.morph.get("Gender", [None])[0]
+    root_verb_part_form = root_verb_part["form"]
+
+    if number == "Sing" and gender == "Fem" and root_verb_part_form[-1]=="t":
+        return f"{root_verb_part_form[:-1]}tă"
+    elif number == "Sing" and gender == "Masc" and root_verb_part_form[-1]=="t":
+        return f"{root_verb_part_form[:-1]}t"
+    elif number == "Plur" and gender == "Fem" and root_verb_part_form[-1]=="t":
+        return f"{root_verb_part_form[:-1]}te"
+    elif number == "Plur" and gender == "Masc" and root_verb_part_form[-1]=="t":
+        return f"{root_verb_part_form[:-1]}ți"
+    elif number == "Sing" and gender == "Fem" and root_verb_part_form[-1]=="s":
+        return f"{root_verb_part_form[:-1]}să"
+    elif number == "Sing" and gender == "Masc" and root_verb_part_form[-1]=="s":
+        return f"{root_verb_part_form[:-1]}s"
+    elif number == "Plur" and gender == "Fem" and root_verb_part_form[-1]=="s":
+        return f"{root_verb_part_form[:-1]}se"
+    elif number == "Plur" and gender == "Masc" and root_verb_part_form[-1]=="s":
+        return f"{root_verb_part_form[:-1]}și"
+
+    return root_verb_part
+
+def get_undefined_word(token, subj_pos):
+    if token.pos_ == "PROPN":
+        return token.text
+    
+    inflections = get_all_forms(token)
+    if ", articulat" in subj_pos:
+        subj_pos = subj_pos.replace(", articulat", ", nearticulat")
+    
+    return [form for form in inflections if form["pos"] == subj_pos][0]["form"]
+
+def get_defined_word(token, subj_pos):
+    if token.pos_ == "PROPN":
+        return token.text
+    
+    inflections = get_all_forms(token)
+    if ", nearticulat" in subj_pos:
+        subj_pos = subj_pos.replace(", nearticulat", ", articulat")
+    
+    return [form for form in inflections if form["pos"] == subj_pos][0]["form"]
+
+
+def active_to_passive(sentence):
+    doc = nlp(sentence)
+    
+    ok_transform = False
+
+    obj_number = "Sing"
+    root_verb_part_form = []
+    obj_token = ""
+    old_subj = ""
+    punct = "."
+    for token in doc:
+        if token.dep_ == "nsubj":
+            subj_pos = get_actual_inflection(token)["pos"]
+            subtree = list(token.subtree)
+            if token.text.lower() == "eu":
+                old_subj = "mine"
+            elif token.text.lower() == "tu":
+                old_subj = "tine"
+            elif len(subtree) > 1:
+                old_subj = " ".join([t.text.lower() if t.pos_ != "PROPN" else t.text for t in subtree])
+            else:
+                old_subj = get_undefined_word(token, subj_pos)
+
+            
+        elif token.dep_ == "ROOT":
+            subtree = list(token.subtree)
+            old_root = " ".join([t.text for t in subtree])
+
+            root_pos = get_actual_inflection(token)["pos"]
+            root_verb_part_form = get_verb_part(token)
+            
+        elif token.dep_ in "obj" or "obj" in token.dep_:
+            ok_transform = True
+            obj_number = token.morph.get("Number", [None])[0]
+            obj_pos = get_actual_inflection(token)["pos"]
+            obj_token = token
+        
+        elif token.pos_ == "PUNCT":
+            punct = token.text
+    
+    if ok_transform is False:
+        print(f"Propozitia: {sentence} nu se poate trece la diateza pasiva!")
+        return None
+
+    new_subject = get_new_subject(obj_token, obj_pos)
+    
+    # acord nou subiect cu predicat
+    aux_form = get_right_aux_form(obj_pos, root_pos, obj_number)
+    new_root = get_new_root_form(root_verb_part_form, obj_token)
+
+    return " ".join([new_subject.capitalize(), aux_form, new_root, "de", old_subj]) + punct
+
+def get_root_form_p2a(token, subj_pos, new_subject, aux_pos):
+    new_token = nlp(token)
+    all_inflections_for_root = get_all_forms(new_token[0])
+
+    time_found = "prezent"
+    time_choices = ["prezent", "perfect simplu", "mai mult ca perfect", "imperfect", "participiu pasiv"]
+    for time in time_choices:
+        if time.lower() in aux_pos.lower():    
+            time_found = time
+
+    number = "singular"
+    if "plural" in subj_pos:
+        number = "plural"
+
+    person = "persoana a III-a"
+    try:
+        person = new_subject.morph.get("Person", ["persoana a III-a"])[0]
+        if person == "1":
+            person = "persoana I"
+        elif person == "2":
+            person = "persoana a II-a"
+        elif person == "3":
+            person = "persoana a III-a"
+    except: 
+        pass
+
+    if time_found == "participiu pasiv":
+        inflection_found = [form for form in all_inflections_for_root if time_found in form["pos"].lower()][0]["form"]
+        if number == "singular" and person == "persoana I":
+            return f"am {inflection_found}"
+        elif number == "singular" and person == "persoana a II-a":
+            return f"ai {inflection_found}"
+        elif number == "singular" and person == "persoana a III-a":
+            return f"a {inflection_found}"
+        elif number == "plural" and person == "persoana I":
+            return f"am {inflection_found}"
+        elif number == "plural" and person == "persoana a II-a":
+            return f"ați {inflection_found}"
+        elif number == "plural" and person == "persoana a III-a":
+            return f"au {inflection_found}"
+    else:
+        all_inflections_filtered_tense = [form for form in all_inflections_for_root if time_found in form["pos"].lower()]
+        all_inflections_filtered_tense_number = [form for form in all_inflections_for_root if number in form["pos"] and "Indicativ" in form["pos"]]
+        all_inflections_filtered_tense_number_person = [form for form in all_inflections_filtered_tense_number if person in form["pos"]][0]
+
+        return all_inflections_filtered_tense_number_person["form"]
+    # # pass
+
+def get_nominative_form(token, subj_pos):
+    if token.morph.get("Case", ["Acc,Nom"])[0] == "Acc":
+        number = "singular"
+        if "plural" in subj_pos:
+            number = "plural"
+
+        gender = ""
+        try:
+            gender = new_subject.morph.get("Gender", ["Masc"])[0]
+            if gender == "Fem":
+                gender = "feminin"
+            else:
+                gender = "masculin"
+        except: 
+            pass
+
+        inflections = get_all_forms(token)
+        nominative_form = [form["form"] for form in inflections if gender in form["pos"] and number in form["pos"]][0]
+        token_to_return = nlp(nominative_form)
+        return token_to_return[0]
+
+def passive_to_active(sentence):
+    doc = nlp(sentence)
+
+    new_subject = ""
+    new_root_form = ""
+    new_obl = ""
+    subj_pos = ""
+    obj_pos = ""
+    punct = ""
+    aux_token = ""
+    aux_pos = ""
+
+    for token in doc:
+        if token.dep_ in "nsubj" or "nsubj" in token.dep_:
+            new_obl = token.text
+            obj_pos = get_actual_inflection(token)["pos"]
+            subtree = [t for t in token.subtree]
+            if len(subtree) > 1:
+                new_obl = " ".join([t.text.lower() for t in subtree])
+
+        elif token.dep_ == "ROOT":
+            new_root_form = token
+            
+        elif token.dep_ in "obl:agent":
+            new_subject_original = token
+            new_subject = token
+            subj_pos = get_actual_inflection(token)["pos"]
+
+            if new_subject.pos_ == "PRON":
+                new_subject = get_nominative_form(new_subject, subj_pos)
+
+            subtree = [t for t in token.subtree if t.text != "de"]
+            subtree_pos = [t.pos_ for t in token.subtree if t.text != "de"]
+            if len(subtree) > 1:
+                if "DET" not in subtree_pos:
+                    new_subject = " ".join([get_defined_word(new_subject, subj_pos) if t == new_subject else t.text for t in subtree])
+                else:
+                    new_subject = " ".join([t.text for t in subtree])
+
+       
+        elif token.pos_ == "PUNCT":
+            punct = token.text
+
+        elif token.dep_ in "aux" or "aux" in token.dep_:
+            aux_token = token
+            aux_pos = get_actual_inflection(token)["pos"]
+
+    new_root = get_root_form_p2a(new_root_form.lemma_, subj_pos, new_subject_original, aux_pos)
+
+    if isinstance(new_subject, str):
+        return " ".join([new_subject.capitalize(), new_root, new_obl]) + punct
+    else:
+        new_subject = get_defined_word(new_subject, subj_pos)
+        return " ".join([new_subject.capitalize(), new_root, new_obl]) + punct
+        
+
